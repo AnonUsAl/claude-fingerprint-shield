@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>Claude 低风险指纹</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="hd">
+    <div class="hd-title">
+      <span class="dot" id="dot"></span>
+      <div>
+        <h1>Claude 低风险指纹</h1>
+        <p class="sub">伪装区域指纹 · 降低「中国用户风险分」</p>
+      </div>
+    </div>
+    <label class="switch" title="总开关">
+      <input type="checkbox" id="enabled">
+      <span class="slider"></span>
+    </label>
+  </header>
+
+  <section class="score">
+    <div class="score-card" id="cardNow">
+      <div class="score-label">当前风险分</div>
+      <div class="score-value" id="scoreNow">--</div>
+      <div class="score-tag" id="tagNow">检测中</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="score-card" id="cardAfter">
+      <div class="score-label">伪装后预计</div>
+      <div class="score-value" id="scoreAfter">--</div>
+      <div class="score-tag" id="tagAfter">检测中</div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <table class="signals">
+      <thead>
+        <tr><th>信号</th><th class="w">权重</th><th class="st">当前</th><th class="st">伪装后</th></tr>
+      </thead>
+      <tbody id="signalRows"></tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <div class="field">
+      <label for="timeZone">伪装时区</label>
+      <select id="timeZone">
+        <option value="America/New_York">America/New_York (UTC-5)</option>
+        <option value="America/Chicago">America/Chicago (UTC-6)</option>
+        <option value="America/Los_Angeles">America/Los_Angeles (UTC-8)</option>
+        <option value="Europe/London">Europe/London (UTC+0)</option>
+        <option value="Europe/Berlin">Europe/Berlin (UTC+1)</option>
+        <option value="Asia/Tokyo">Asia/Tokyo (UTC+9)</option>
+        <option value="Asia/Seoul">Asia/Seoul (UTC+9)</option>
+        <option value="Asia/Singapore">Asia/Singapore (UTC+8)</option>
+        <option value="Australia/Sydney">Australia/Sydney (UTC+11)</option>
+        <option value="UTC">UTC</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="language">伪装语言</label>
+      <select id="language">
+        <option value="en-US">en-US 英语（美国）</option>
+        <option value="en-GB">en-GB 英语（英国）</option>
+        <option value="ja-JP">ja-JP 日本語</option>
+        <option value="ko-KR">ko-KR 한국어</option>
+        <option value="de-DE">de-DE Deutsch</option>
+        <option value="fr-FR">fr-FR Français</option>
+      </select>
+    </div>
+
+    <div class="checks">
+      <label class="chk"><input type="checkbox" id="blockFonts"><span>屏蔽中文字体 / 国产字体探测</span></label>
+      <label class="chk"><input type="checkbox" id="blockWebRTC"><span>拦截 WebRTC 真实 IP 泄露</span></label>
+      <label class="chk"><input type="checkbox" id="sanitizeUA"><span>净化 UA / UA-CH 国产浏览器与设备标识</span></label>
+      <label class="chk"><input type="checkbox" id="spoofAcceptLanguage"><span>重写 Accept-Language 请求头</span></label>
+    </div>
+  </section>
+
+  <footer class="ft">
+    <button id="rescan" class="btn">重新检测</button>
+    <p class="note">
+      表内数字是各项的加权贡献（该站 10 项权重之和 = 100）。分数按公开模型估算，
+      IP 信誉、支付卡 BIN、账号资历不在浏览器可见范围内，低分不等于「不会被封」。
+      Emoji 一项只按 UA/platform 推断系统厂商，Apple 的 0.25 已是全表最低档 ——
+      这一项 +1 是理论下限，任何伪装都消不掉。设置改动后请刷新页面生效。
+    </p>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

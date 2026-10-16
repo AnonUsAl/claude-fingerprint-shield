@@ -1,0 +1,27 @@
+# ---- 签名与打包产物：绝对不要入库 ----
+*.pem
+*.crx
+*.zip
+*.key
+
+# ---- 系统垃圾 ----
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+desktop.ini
+
+# ---- 编辑器 / IDE ----
+.vscode/
+.idea/
+*.swp
+*~
+
+# ---- Node（仅用于跑 tools/ 下的测试脚本） ----
+node_modules/
+npm-debug.log*
+
+# ---- Python（tools/make_icons.py） ----
+__pycache__/
+*.py[cod]
+.venv/
