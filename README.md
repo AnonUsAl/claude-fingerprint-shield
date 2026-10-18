@@ -119,10 +119,10 @@ servd-anthropic-website.b-cdn.net          官网静态资源（BunnyCDN 共享�
 4. 右上角打开 **开发者模式**
 5. 点 **加载已解压的扩展程序**，选择刚才解压出来的目录
 
-> 早期 Release（v1.0.0）还附了 `.crx`。crx 必须用同一个签名私钥续签（换钥会改扩展 ID），
-> 所以 v1.0.1 起只发 zip。Chromium 系从 88 版起本来就禁止把非商店来源的 crx 拖进扩展页安装，
-> crx 只适合部分浏览器（如开启相应开关的 Brave / 企业策略下发）。
-> **直接解压 zip 按上面的方式加载即可**，不用管 crx。
+> 也附了 `.crx`（与 zip 用的是同一把签名私钥，扩展 ID 都是 `bmhigbelenmlihofadfkcbcoallnfjjp`，
+> 不是换了 ID 的新扩展）。Chromium 系从 88 版起就禁止把非商店来源的 crx 拖进扩展页安装，
+> 所以 crx 只适合部分浏览器（如开启相应开关的 Brave / 企业策略下发）。
+> **装不上就用上面的 zip 方式**，两者内容一致。
 
 ### 方式 B：从源码加载
 
