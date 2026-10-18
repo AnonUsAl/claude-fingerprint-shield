@@ -1,0 +1,18 @@
+name: domains-sync-check
+
+on:
+  push:
+    paths:
+      - 'domains.json'
+      - 'manifest.json'
+      - 'src/background.js'
+      - 'tools/sync_domains.cjs'
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 校验 domains.json 与 manifest.json / src/background.js 一致
+        run: node tools/sync_domains.cjs --check

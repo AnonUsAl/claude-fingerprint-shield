@@ -16,13 +16,30 @@
  *  - 所有 hook 在调用时读取 CFG 的实时值，因此配置可以「晚到」
  *    （由 bridge.js 在 ISOLATED world 读取 storage 后 postMessage 注入），
  *    晚到的配置会立即对之后的调用生效。
+ *  - 配置通道是一次性 nonce 通道：bridge.js 在 document_start 同步生成 nonce
+ *    并写入 documentElement[data-fp-n]，随配置消息一起发出；本脚本只接受
+ *    nonce 与当前属性一致的消息，且收下第一条有效配置后立即摘监听、擦除
+ *    nonce —— 之后页面脚本再伪造 {__fpGuard:true} 消息也无人受理。
+ *  - 配置值全部过校验：时区必须能被 Intl 解析、语言必须形如 BCP-47、
+ *    开关必须是布尔值，非法值一律忽略（否则一条伪造消息就能让 Intl 抛异常）。
+ *  - CFG 只存在于本闭包，window 上只留一个不可枚举的 Symbol 作重复注入
+ *    保护：Object.keys / JSON.stringify / for...in 都枚举不到它，页面脚本
+ *    读不到「当前伪装成了什么」，也没法拿它当「装了伪装扩展」的识别点。
  *  - 所有 hook 都做了 try/catch 与「原函数透传」兜底，关闭开关即完全等于原生。
  *  - 用 Function.prototype.toString 代理掩盖被 hook 函数的源码，避免 toString 反查。
+ *
+ * 残余风险（MV3 MAIN world 注入的固有极限）：MAIN world 与页面脚本共享同一个
+ * realm，没有任何「页面读不到而 spoof.js 读得到」的通道。页面若能赶在首条
+ * 配置送达前读到 nonce 并同步派发伪造的 MessageEvent，仍可改写这一次的配置
+ * —— 所以设置改动后请刷新页面，也让这条通道尽早一次性关闭。
  */
 (() => {
   'use strict';
 
-  if (window.__FP_GUARD__) return;
+  // 重复注入保护：不可枚举的 Symbol（Symbol.for 在同一 realm 内共享）。
+  const GUARD_KEY = Symbol.for('claude-fp-shield.guard.v1');
+  if (Object.prototype.hasOwnProperty.call(window, GUARD_KEY)) return;
+  Object.defineProperty(window, GUARD_KEY, { value: true, configurable: true });
 
   const DEFAULTS = {
     enabled: true,
@@ -33,8 +50,12 @@
     sanitizeUA: true
   };
 
+  // CFG 只活在本闭包里，不再挂 window（见 issue #1）
   const CFG = Object.assign({}, DEFAULTS);
-  window.__FP_GUARD__ = CFG;
+
+  // UA 国产标识正则来自 src/ua-patterns.js（单一真源，manifest 保证它先注入）。
+  // 拿不到时只跳过 UA 净化，其余 hook 不受影响。
+  const PATTERNS = window[Symbol.for('claude-fp-shield.ua-patterns.v1')] || null;
 
   /* ================= 通用 hook 工具 ================= */
 
@@ -416,8 +437,6 @@
 
   /* ================= 6 + 7. 国产浏览器 / 国产品牌设备（UA / UA-CH） ================= */
 
-  const CN_UA_RE = /(MicroMessenger|Weixin|QQBrowser|MQQBrowser|Quark|UCBrowser|UBrowser|BIDUBrowser|Baiduspider|Maxthon|TheWorld|2345Explorer|Sogou|LieBao|LBBROWSER|HuaweiBrowser|HBPC|HarmonyOS|ArkWeb|VivoBrowser|HeyTapBrowser|MiuiBrowser|XiaoMi|MiBro|OppoBrowser|HeyTap|HonorBrowser|AlipayClient|DingTalk|Weibo|ToutiaoMicroApp|ByteDance|NewsArticle|MZBrowser|Flysilk|Huawei|OPPO|VIVO|Xiaomi|Redmi|Realme|OnePlus|Meizu|Gionee|Smartisan|360Browser|QIHU)/i;
-
   function buildCleanUA(realUA) {
     const major = (realUA.match(/Chrome\/(\d+)/) || [])[1] || '126';
     const v = major + '.0.0.0';
@@ -435,8 +454,10 @@
   }
 
   try {
-    const realUA = navigator.userAgent;
-    if (CN_UA_RE.test(realUA)) {
+    // CN_UA_RE = 国产浏览器标识 ∪ 国产设备品牌标识（来自 ua-patterns.js 单一真源）。
+    // PATTERNS 缺失（manifest 顺序被改坏）时整段跳过，不让 UA 净化悄悄失效又无从排查。
+    if (PATTERNS && PATTERNS.CN_UA_RE.test(navigator.userAgent)) {
+      const realUA = navigator.userAgent;
       const clean = buildCleanUA(realUA);
       const uaDesc = Object.getOwnPropertyDescriptor(Navigator.prototype, 'userAgent')
         || Object.getOwnPropertyDescriptor(navigator, 'userAgent');
@@ -496,17 +517,53 @@
     }
   } catch (e) { /* ignore */ }
 
-  /* ================= 配置注入通道（来自 bridge.js） ================= */
+  /* ================= 配置注入通道（来自 bridge.js，一次性 nonce 通道） ================= */
 
   const ALLOW_KEYS = Object.keys(DEFAULTS);
-  window.addEventListener('message', (ev) => {
-    if (ev.source !== window) return;
-    const data = ev.data;
-    if (!data || data.__fpGuard !== true || !data.settings || typeof data.settings !== 'object') return;
+  const LOCALE_RE = /^[A-Za-z]{2,8}(-[A-Za-z0-9]{2,8})*$/;
+  const NONCE_ATTR = 'data-fp-n';
+
+  /** 时区串必须能被 Intl 解析，否则 Intl.DateTimeFormat 会抛 RangeError 把页面搞坏 */
+  function isValidTimeZone(tz) {
+    if (typeof tz !== 'string' || !tz) return false;
+    try { new OrigDTF('en-US', { timeZone: tz }); return true; } catch (e) { return false; }
+  }
+
+  /** 只接受形状正确的值；脏数据一律忽略，保持当前配置不变 */
+  function applySettings(s) {
     for (const k of ALLOW_KEYS) {
-      if (Object.prototype.hasOwnProperty.call(data.settings, k) && data.settings[k] !== undefined) {
-        CFG[k] = data.settings[k];
-      }
+      if (!Object.prototype.hasOwnProperty.call(s, k)) continue;
+      const v = s[k];
+      if (v === undefined) continue;
+      if (k === 'timeZone') { if (isValidTimeZone(v)) CFG.timeZone = v; }
+      else if (k === 'language') { if (typeof v === 'string' && LOCALE_RE.test(v)) CFG.language = v; }
+      else if (typeof v === 'boolean') CFG[k] = v;
     }
-  }, false);
+  }
+
+  function currentNonce() {
+    try {
+      const el = document.documentElement;
+      return el ? el.getAttribute(NONCE_ATTR) : null;
+    } catch (e) { return null; }
+  }
+
+  let channelOpen = true;
+
+  function onConfigMessage(ev) {
+    if (!channelOpen) return;
+    if (ev.source !== window) return;                      // 只要本窗口发出的消息
+    const d = ev.data;
+    if (!d || d.__fpGuard !== true || typeof d.nonce !== 'string') return;
+    const expected = currentNonce();
+    if (!expected || d.nonce !== expected) return;         // nonce 不匹配 → 直接丢弃
+    // 收下第一条有效配置后立刻关通道、擦掉 nonce：
+    // 之后页面脚本照抄消息格式也再也送不进来了
+    channelOpen = false;
+    try { document.documentElement.removeAttribute(NONCE_ATTR); } catch (e) { /* ignore */ }
+    try { window.removeEventListener('message', onConfigMessage, false); } catch (e) { /* ignore */ }
+    if (d.settings && typeof d.settings === 'object') applySettings(d.settings);
+  }
+
+  try { window.addEventListener('message', onConfigMessage, false); } catch (e) { /* ignore */ }
 })();

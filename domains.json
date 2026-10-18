@@ -1,0 +1,15 @@
+{
+  "_comment": "扩展生效域名的单一真源（single source of truth）。加/改域名只动这里，然后跑 node tools/sync_domains.cjs 同步到 manifest.json（host_permissions + 两处 content_scripts.matches）和 src/background.js（SCOPED_DOMAINS）。includeSubdomains 为 false 时只生成精确域（用于 BunnyCDN 这类共享域名，不能写 *.b-cdn.net）。",
+  "domains": [
+    { "domain": "claude.ai" },
+    { "domain": "claude.com" },
+    { "domain": "anthropic.com", "_comment": "含 console.anthropic.com" },
+    { "domain": "claude.dev", "_comment": "开发者域名" },
+    { "domain": "clau.de", "_comment": "分享短链落地域" },
+    { "domain": "claudemcpclient.com", "_comment": "MCP 连接器客户端" },
+    { "domain": "claudemcpcontent.com", "_comment": "MCP 内容托管" },
+    { "domain": "claudeusercontent.com", "_comment": "artifact 在 iframe 里加载，all_frames 已开" },
+    { "domain": "fuck-claude.vercel.app", "includeSubdomains": false },
+    { "domain": "servd-anthropic-website.b-cdn.net", "includeSubdomains": false, "_comment": "官网静态资源（BunnyCDN 共享域名，只能写精确子域）" }
+  ]
+}

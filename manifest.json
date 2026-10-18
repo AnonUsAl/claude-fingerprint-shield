@@ -15,7 +15,18 @@
     "*://*.claude.com/*",
     "*://anthropic.com/*",
     "*://*.anthropic.com/*",
-    "*://fuck-claude.vercel.app/*"
+    "*://claude.dev/*",
+    "*://*.claude.dev/*",
+    "*://clau.de/*",
+    "*://*.clau.de/*",
+    "*://claudemcpclient.com/*",
+    "*://*.claudemcpclient.com/*",
+    "*://claudemcpcontent.com/*",
+    "*://*.claudemcpcontent.com/*",
+    "*://claudeusercontent.com/*",
+    "*://*.claudeusercontent.com/*",
+    "*://fuck-claude.vercel.app/*",
+    "*://servd-anthropic-website.b-cdn.net/*"
   ],
   "background": {
     "service_worker": "src/background.js"
@@ -45,7 +56,18 @@
         "*://*.claude.com/*",
         "*://anthropic.com/*",
         "*://*.anthropic.com/*",
-        "*://fuck-claude.vercel.app/*"
+        "*://claude.dev/*",
+        "*://*.claude.dev/*",
+        "*://clau.de/*",
+        "*://*.clau.de/*",
+        "*://claudemcpclient.com/*",
+        "*://*.claudemcpclient.com/*",
+        "*://claudemcpcontent.com/*",
+        "*://*.claudemcpcontent.com/*",
+        "*://claudeusercontent.com/*",
+        "*://*.claudeusercontent.com/*",
+        "*://fuck-claude.vercel.app/*",
+        "*://servd-anthropic-website.b-cdn.net/*"
       ],
       "js": ["src/bridge.js"],
       "run_at": "document_start",
@@ -59,9 +81,23 @@
         "*://*.claude.com/*",
         "*://anthropic.com/*",
         "*://*.anthropic.com/*",
-        "*://fuck-claude.vercel.app/*"
+        "*://claude.dev/*",
+        "*://*.claude.dev/*",
+        "*://clau.de/*",
+        "*://*.clau.de/*",
+        "*://claudemcpclient.com/*",
+        "*://*.claudemcpclient.com/*",
+        "*://claudemcpcontent.com/*",
+        "*://*.claudemcpcontent.com/*",
+        "*://claudeusercontent.com/*",
+        "*://*.claudeusercontent.com/*",
+        "*://fuck-claude.vercel.app/*",
+        "*://servd-anthropic-website.b-cdn.net/*"
       ],
-      "js": ["src/spoof.js"],
+      "js": [
+        "src/ua-patterns.js",
+        "src/spoof.js"
+      ],
       "run_at": "document_start",
       "all_frames": true,
       "world": "MAIN"

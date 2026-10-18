@@ -128,8 +128,14 @@ sandbox.window = sandbox;
 vm.createContext(sandbox);
 vm.runInContext(code, sandbox);
 
-const CFG = sandbox.window.__FP_GUARD__;
-console.log('spoof.js 已加载，CFG =', JSON.stringify(CFG), '\n');
+// issue #1 之后 CFG 不再挂 window，只留不可枚举的 Symbol 作重复注入保护
+const guardOK = vm.runInContext(
+  'globalThis[Symbol.for("claude-fp-shield.guard.v1")] === true', sandbox);
+console.log('spoof.js 已加载，guard symbol =', guardOK, '\n');
+if (!guardOK) {
+  console.log('❌ guard symbol 未设置（重复注入保护失效）');
+  process.exit(1);
+}
 
 /* ---------- 5. 第二次：打了补丁 ---------- */
 

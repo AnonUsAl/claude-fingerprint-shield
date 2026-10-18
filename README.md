@@ -87,13 +87,27 @@ score: { Apple: 0.25, Microsoft: 0.4, Google: 0.35, "Linux / Other": 0.5, Unknow
 ## 2. 生效范围
 
 ```
-claude.ai            *.claude.ai
-claude.com           *.claude.com
-anthropic.com        *.anthropic.com   （含 console.anthropic.com）
+claude.ai              *.claude.ai
+claude.com             *.claude.com
+anthropic.com          *.anthropic.com   （含 console.anthropic.com）
+claude.dev             *.claude.dev      开发者域名
+clau.de                *.clau.de         分享短链落地域
+claudemcpclient.com    *.claudemcpclient.com
+claudemcpcontent.com   *.claudemcpcontent.com
+claudeusercontent.com  *.claudeusercontent.com   artifact iframe（all_frames 已开）
 fuck-claude.vercel.app
+servd-anthropic-website.b-cdn.net          官网静态资源（BunnyCDN 共享域名，仅精确子域）
 ```
 
 只在上述域名注入。Cloudflare Turnstile 等第三方 iframe（域名不匹配）不受影响。
+
+> 域名清单的**单一真源**是仓库根目录的 `domains.json`：manifest 的 `host_permissions`、
+> 两处 `content_scripts.matches` 和 `background.js` 的 `SCOPED_DOMAINS` 全部由
+> `tools/sync_domains.cjs` 生成，**不要手改这三处**——漏改一处不会报错，
+> 只会出现「内容脚本注入了但 `Accept-Language` 没改」这种静默分叉。
+> 加域名只改 `domains.json` 再跑一次同步（见 [第 8 节](#8-开发)）。
+> Chrome MV3 的 match pattern 与 `declarativeNetRequest.requestDomains` 都只接受域名，
+> **不支持 ASN / CIDR**；想按 IP 段固定出口节点请用 Clash / Surge 规则集，见 [第 5 节](#5-降不了的东西重要)。
 
 ## 3. 安装
 
@@ -150,7 +164,7 @@ git clone https://github.com/AnonUsAl/claude-fingerprint-shield.git
 
 | 维度 | 说明 |
 |------|------|
-| **IP 归属与信誉** | 数据中心 IP、机房段、被标注过的出口 IP，照样会被标记。需要住宅 IP / 干净节点。 |
+| **IP 归属与信誉** | 数据中心 IP、机房段、被标注过的出口 IP，照样会被标记。需要住宅 IP / 干净节点。想固定出口可以按域名写 Clash / Surge 规则集（MV3 扩展本身表达不了 ASN / CIDR），把 Anthropic 相关域名指到同一个节点。 |
 | **支付方式** | 虚拟卡 / 高风险卡 BIN。 |
 | **账号资历与行为** | 注册地、账号年龄、使用模式。 |
 | **Claude Code 的系统时区** | 官方被披露的机制读的是**操作系统** `TZ`，不是浏览器的。用 Claude Code + 中转时要自己改宿主机 `TZ`。 |
@@ -161,8 +175,14 @@ git clone https://github.com/AnonUsAl/claude-fingerprint-shield.git
 ## 6. 已知限制
 
 - `world: "MAIN"` 注入只覆盖页面主线程和匹配域名的 iframe，**不覆盖 Web Worker**。
-- 配置由 ISOLATED world 的 `bridge.js` 读取 storage 后 `postMessage` 送达，理论上比 `document_start`
-  晚几毫秒；因为所有 hook 都是「调用时读配置」，对实际检测（一般在 hydration 之后）无影响。
+- 配置由 ISOLATED world 的 `bridge.js` 读取 storage 后送达，走**一次性 nonce 通道**：
+  nonce 在 `document_start` 同步写入 `documentElement[data-fp-n]` 并随配置消息发出，
+  `spoof.js` 只接受 nonce 匹配的消息，收下第一条有效配置后立即摘监听、擦除 nonce。
+  页面脚本照抄 `{__fpGuard:true}` 的伪造消息没有 nonce，会被直接丢弃；配置值也全部过校验
+  （时区必须能被 `Intl` 解析、语言必须形如 BCP-47、开关必须是布尔值）。
+  残余风险是 MV3 MAIN world 注入的固有极限：MAIN world 与页面脚本同一个 realm，
+  页面若能赶在首条配置送达前读到 nonce 并同步派发伪造的 `MessageEvent`，仍可改写这一次的配置
+  ——所以**设置改动后请刷新页面**，也让这条通道尽早一次性关闭。
 - 扩展页面（弹窗）自身不做伪装，这是故意的——「当前风险分」要读真实环境。
 - 若目标站点后续加了 Service Worker / Worker 侧的字体或时区检测，需要另行补丁。
 
@@ -170,33 +190,52 @@ git clone https://github.com/AnonUsAl/claude-fingerprint-shield.git
 
 ```
 claude-fingerprint-shield/
-├── manifest.json            MV3 清单
+├── manifest.json            MV3 清单（matches / host_permissions 由 sync_domains.cjs 生成）
+├── domains.json             生效域名单一真源
 ├── src/
 │   ├── spoof.js             指纹伪装主脚本（MAIN world / document_start）
-│   ├── bridge.js            配置桥（ISOLATED world，读 storage → postMessage）
+│   ├── ua-patterns.js       UA 国产标识正则单一真源（spoof.js 之前注入，popup 也引它）
+│   ├── bridge.js            配置桥（ISOLATED world，读 storage → 一次性 nonce 通道）
 │   ├── background.js        Service Worker，同步 Accept-Language 动态规则
 │   └── popup.html/css/js    控制面板与分数对照
 ├── icons/                   16/32/48/128 图标
 ├── tools/
 │   ├── make_icons.py        图标生成脚本（纯标准库，无第三方依赖）
-│   └── test_font_strip.cjs  字体对抗回归测试（纯 Node，不需要浏览器）
+│   ├── sync_domains.cjs     domains.json → manifest/background 同步 + --check 校验
+│   ├── test_font_strip.cjs  字体对抗回归测试（纯 Node，不需要浏览器）
+│   └── test_config_channel.cjs  配置通道 / UA 真源回归测试（纯 Node）
+├── .github/workflows/       domains-sync-check：push/PR 时跑 sync_domains.cjs --check
 ├── LICENSE                  MIT
 └── .gitignore
 ```
 
-跑一遍字体对抗的回归测试：
+跑一遍回归测试（都不需要浏览器）：
 
 ```bash
 node tools/test_font_strip.cjs
+node tools/test_config_channel.cjs
 ```
 
-它用一个假的 canvas 上下文 + 原样搬来的站点探测函数，验证「被禁字体一律量成基线宽度」，
-同时确认对照组（Arial 等真实存在的字体）没有被误伤。
+`test_config_channel.cjs` 用一个「迷你扩展运行时」桩同时加载 `ua-patterns.js` /
+`spoof.js` / `bridge.js`，验证 Symbol 守卫、一次性 nonce 通道、伪造消息拦截、
+非法配置值忽略，以及 UA 真源取并集后 `wxwork` 等条目能真正触发净化。
 
 ## 8. 开发
 
 - 无构建步骤，改完源码直接在扩展页点 **重新加载** 即可。
 - 改 `manifest.json` 的 `content_scripts.matches` 后，需要重新加载扩展 + 刷新页面。
+- **域名清单走单一真源**：加 / 改域名只动 `domains.json`，然后跑
+
+  ```bash
+  node tools/sync_domains.cjs           # 写入 manifest.json / src/background.js
+  node tools/sync_domains.cjs --check   # 只校验，不一致退出码 1
+  ```
+
+  仓库带了 GitHub Actions workflow（`.github/workflows/domains-sync-check.yml`），
+  push / PR 时自动跑 `--check`，防止三处域名再分叉；也可以挂到 pre-commit。
+- **UA 国产标识正则走单一真源** `src/ua-patterns.js`：manifest 里它排在 `spoof.js`
+  之前注入（同为 MAIN world，按 `js` 数组顺序执行），`popup.html` 也 `<script>` 引入
+  同一份。`--check` 会连带校验这个顺序。
 - 重新打包 crx（需要你自己生成并妥善保管私钥）：
 
 ```bash

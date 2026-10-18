@@ -14,7 +14,19 @@ const DEFAULT_SETTINGS = {
   spoofAcceptLanguage: true
 };
 
-const SCOPED_DOMAINS = ['claude.ai', 'claude.com', 'anthropic.com', 'fuck-claude.vercel.app'];
+// 由 tools/sync_domains.cjs 从 domains.json 生成，请勿手改；加域名请改 domains.json
+const SCOPED_DOMAINS = [
+  'claude.ai',
+  'claude.com',
+  'anthropic.com',
+  'claude.dev',
+  'clau.de',
+  'claudemcpclient.com',
+  'claudemcpcontent.com',
+  'claudeusercontent.com',
+  'fuck-claude.vercel.app',
+  'servd-anthropic-website.b-cdn.net'
+];
 
 const ALL_RESOURCE_TYPES = [
   'main_frame', 'sub_frame', 'stylesheet', 'script', 'image', 'font',

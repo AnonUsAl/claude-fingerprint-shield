@@ -47,7 +47,12 @@ const VENDOR_FONTS = ['MiSans', 'MIUI', 'HarmonyOS Sans SC', 'HarmonyOS Sans', '
   'OPPO Sans', 'vivo Sans', 'Alibaba PuHuiTi', 'Alibaba Sans', 'DingTalk JinBuTi', 'Douyin Sans',
   'HYQiHei', 'FZShuSong-Z01S', 'FZKai-Z03S', 'FZHei-B01S', 'FZFangSong-Z02S'];
 
-const CN_UA_RE = /(micromessenger|wxwork|mqqbrowser|qqbrowser|\bqq\/|quark|ucbrowser|ucweb|baiduboxapp|bidubrowser|baidubrowser|miuibrowser|xiaomi\/|mibrowser|huaweibrowser|heytapbrowser|oppobrowser|vivobrowser|sogoumobilebrowser|\bmetasr\b|maxthon|360se|360ee|qihoobrowser|\bqhbrowser\b|2345explorer|2345browser|lbbrowser|theworld|aweme|bytedancewebview|newsarticle|toutiaomicroapp|alipayclient|dingtalk|weibo|xiaohongshu|xhsminiapp|bilibili)/i;
+// UA 国产标识正则与 spoof.js 共用同一份真源（src/ua-patterns.js，由 popup.html 引入）。
+// 浏览器标识与设备品牌分开判断：Huawei / OPPO 这类词在 UA 里是设备品牌，
+// 拿来判「国产浏览器」会误伤。拿不到真源时用永不命中的正则兜底，面板照常渲染。
+const PATTERNS = window[Symbol.for('claude-fp-shield.ua-patterns.v1')] || null;
+const CN_BROWSER_RE = PATTERNS ? PATTERNS.CN_BROWSER_RE : /(?!)/;
+const CN_DEVICE_RE = PATTERNS ? PATTERNS.CN_DEVICE_RE : /(?!)/;
 
 let settings = Object.assign({}, DEFAULTS);
 let webrtcState = 'unknown';
@@ -171,9 +176,8 @@ function detectNow() {
 
   const brands = (() => { try { return JSON.stringify((navigator.userAgentData && navigator.userAgentData.brands) || []); } catch (e) { return ''; } })();
   const model = (() => { try { return (navigator.userAgentData && navigator.userAgentData.model) || ''; } catch (e) { return ''; } })();
-  const cnBrowserHit = CN_UA_RE.test(ua + ' ' + brands);
-  const deviceHit = /(huawei|honor|xiaomi|redmi|poco|oppo|vivo|iqoo|oneplus|realme|meizu|smartisan|zte|lenovo)/i
-    .test(ua + ' ' + model + ' ' + brands);
+  const cnBrowserHit = CN_BROWSER_RE.test(ua + ' ' + brands);
+  const deviceHit = CN_DEVICE_RE.test(ua + ' ' + model + ' ' + brands);
   const em = emojiInfo();
   const off = new Date().getTimezoneOffset();
 
