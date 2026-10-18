@@ -113,15 +113,16 @@ servd-anthropic-website.b-cdn.net          官网静态资源（BunnyCDN 共享�
 
 ### 方式 A：下载即用（推荐）
 
-1. 到 [Releases](../../releases/latest) 下载 `claude-fingerprint-shield-v1.0.0.zip`
+1. 到 [Releases](../../releases/latest) 下载 `claude-fingerprint-shield-v1.0.1.zip`
 2. **解压**到一个**固定目录**（别放临时目录，扩展加载后不能挪走）
 3. 打开 `chrome://extensions/`（Edge 是 `edge://extensions/`，Brave 是 `brave://extensions/`）
 4. 右上角打开 **开发者模式**
 5. 点 **加载已解压的扩展程序**，选择刚才解压出来的目录
 
-> Release 里也附了 `.crx`。Chromium 系从 88 版起就禁止把非商店来源的 crx 拖进扩展页安装，
-> 所以 crx 只适合部分浏览器（如开启相应开关的 Brave / 企业策略下发）。**装不上就用上面的 zip 方式**，
-> 两者内容完全一致。
+> 早期 Release（v1.0.0）还附了 `.crx`。crx 必须用同一个签名私钥续签（换钥会改扩展 ID），
+> 所以 v1.0.1 起只发 zip。Chromium 系从 88 版起本来就禁止把非商店来源的 crx 拖进扩展页安装，
+> crx 只适合部分浏览器（如开启相应开关的 Brave / 企业策略下发）。
+> **直接解压 zip 按上面的方式加载即可**，不用管 crx。
 
 ### 方式 B：从源码加载
 
