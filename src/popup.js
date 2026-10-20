@@ -49,10 +49,11 @@ const VENDOR_FONTS = ['MiSans', 'MIUI', 'HarmonyOS Sans SC', 'HarmonyOS Sans', '
 
 // UA 国产标识正则与 spoof.js 共用同一份真源（src/ua-patterns.js，由 popup.html 引入）。
 // 浏览器标识与设备品牌分开判断：Huawei / OPPO 这类词在 UA 里是设备品牌，
-// 拿来判「国产浏览器」会误伤。拿不到真源时用永不命中的正则兜底，面板照常渲染。
+// 拿不到真源时相关分数应为未知，避免把检测失败显示成零风险。
 const PATTERNS = window[Symbol.for('claude-fp-shield.ua-patterns.v1')] || null;
-const CN_BROWSER_RE = PATTERNS ? PATTERNS.CN_BROWSER_RE : /(?!)/;
-const CN_DEVICE_RE = PATTERNS ? PATTERNS.CN_DEVICE_RE : /(?!)/;
+if (!PATTERNS) console.warn('[claude-fingerprint-shield] ua-patterns.js 未加载，国产浏览器和设备检测结果未知。');
+const CN_BROWSER_RE = PATTERNS && PATTERNS.CN_BROWSER_RE;
+const CN_DEVICE_RE = PATTERNS && PATTERNS.CN_DEVICE_RE;
 
 let settings = Object.assign({}, DEFAULTS);
 let webrtcState = 'unknown';
@@ -176,8 +177,8 @@ function detectNow() {
 
   const brands = (() => { try { return JSON.stringify((navigator.userAgentData && navigator.userAgentData.brands) || []); } catch (e) { return ''; } })();
   const model = (() => { try { return (navigator.userAgentData && navigator.userAgentData.model) || ''; } catch (e) { return ''; } })();
-  const cnBrowserHit = CN_BROWSER_RE.test(ua + ' ' + brands);
-  const deviceHit = CN_DEVICE_RE.test(ua + ' ' + model + ' ' + brands);
+  const cnBrowserHit = CN_BROWSER_RE ? CN_BROWSER_RE.test(ua + ' ' + brands) : false;
+  const deviceHit = CN_DEVICE_RE ? CN_DEVICE_RE.test(ua + ' ' + model + ' ' + brands) : false;
   const em = emojiInfo();
   const off = new Date().getTimezoneOffset();
 
@@ -187,8 +188,8 @@ function detectNow() {
     fonts: { score: fontsScore, raw: '简体 ' + sl + ' 个 / 繁体 ' + tl + ' 个' },
     vendorFonts: { score: vendorScore, raw: vf + ' 个' },
     webrtcLeak: { score: webrtcState === 'leak' ? 1 : 0, raw: webrtcState, unknown: webrtcState === 'unknown' },
-    cnBrowser: { score: cnBrowserHit ? 1 : 0, raw: cnBrowserHit ? '命中国产标识' : '未命中' },
-    deviceVendor: { score: deviceHit ? 1 : 0, raw: model || '未命中' },
+    cnBrowser: { score: cnBrowserHit ? 1 : 0, raw: PATTERNS ? (cnBrowserHit ? '命中国产标识' : '未命中') : 'UA 规则未加载', unknown: !PATTERNS },
+    deviceVendor: { score: deviceHit ? 1 : 0, raw: PATTERNS ? (model || '未命中') : 'UA 规则未加载', unknown: !PATTERNS },
     intlLocale: { score: intlScore, raw: locale || 'unknown' },
     timezoneOffset: { score: off === -480 ? 1 : 0, raw: 'UTC' + (off <= 0 ? '+' : '-') + Math.abs(off / 60) },
     emoji: { score: em.score, raw: em.vendor + ' style' }

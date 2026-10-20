@@ -48,7 +48,15 @@
   function readAndPush(force) {
     try {
       chrome.storage.local.get('settings', (res) => {
-        if (res && res.settings) push(res.settings, force);
+        if (!res || !res.settings) return;
+        // storage 回调可能晚于首条配置消息；在真正 push 前确认通道仍开放。
+        // spoof.js 收下配置后会删掉 nonce，属性已不在就不能再次写回。
+        if (force) {
+          try {
+            if (!document.documentElement || !document.documentElement.hasAttribute(NONCE_ATTR)) return;
+          } catch (e) { return; }
+        }
+        push(res.settings, force);
       });
     } catch (e) { /* ignore */ }
   }

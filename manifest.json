@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Claude 低风险指纹",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "访问 Claude 相关站点时，把时区 / 语言 / 中文字体 / WebRTC / Intl 等区域指纹伪装成非中国大陆环境，降低「中国用户风险分」。",
   "minimum_chrome_version": "111",
   "permissions": [

@@ -1,5 +1,7 @@
 # Claude 低风险指纹 · claude-fingerprint-shield
 
+[English](README.en.md) | **简体中文**
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-blue.svg)](manifest.json)
 [![Chromium 111+](https://img.shields.io/badge/Chromium-111%2B-4285F4.svg)](#3-安装)
@@ -113,7 +115,7 @@ servd-anthropic-website.b-cdn.net          官网静态资源（BunnyCDN 共享�
 
 ### 方式 A：下载即用（推荐）
 
-1. 到 [Releases](../../releases/latest) 下载 `claude-fingerprint-shield-v1.0.1.zip`
+1. 到 [Releases](../../releases/latest) 下载 `claude-fingerprint-shield-v1.0.2.zip`
 2. **解压**到一个**固定目录**（别放临时目录，扩展加载后不能挪走）
 3. 打开 `chrome://extensions/`（Edge 是 `edge://extensions/`，Brave 是 `brave://extensions/`）
 4. 右上角打开 **开发者模式**
@@ -206,6 +208,8 @@ claude-fingerprint-shield/
 │   ├── test_font_strip.cjs  字体对抗回归测试（纯 Node，不需要浏览器）
 │   └── test_config_channel.cjs  配置通道 / UA 真源回归测试（纯 Node）
 ├── .github/workflows/       domains-sync-check：push/PR 时跑 sync_domains.cjs --check
+├── README.md                中文说明（本文件）
+├── README.en.md             English README
 ├── LICENSE                  MIT
 └── .gitignore
 ```
@@ -224,8 +228,8 @@ node tools/test_config_channel.cjs
 ## 8. 开发
 
 - 无构建步骤，改完源码直接在扩展页点 **重新加载** 即可。
-- 改 `manifest.json` 的 `content_scripts.matches` 后，需要重新加载扩展 + 刷新页面。
-- **域名清单走单一真源**：加 / 改域名只动 `domains.json`，然后跑
+- 不要手动修改 `manifest.json` 的 `content_scripts.matches` 或 `host_permissions`。
+  加 / 改域名只动 `domains.json`，然后跑同步脚本：
 
   ```bash
   node tools/sync_domains.cjs           # 写入 manifest.json / src/background.js

@@ -455,7 +455,8 @@
 
   try {
     // CN_UA_RE = 国产浏览器标识 ∪ 国产设备品牌标识（来自 ua-patterns.js 单一真源）。
-    // PATTERNS 缺失（manifest 顺序被改坏）时整段跳过，不让 UA 净化悄悄失效又无从排查。
+    // PATTERNS 缺失通常代表 manifest 顺序或脚本加载出了问题；明确告警，便于排查。
+    if (!PATTERNS) console.warn('[claude-fingerprint-shield] ua-patterns.js 未加载，UA 净化已跳过。');
     if (PATTERNS && PATTERNS.CN_UA_RE.test(navigator.userAgent)) {
       const realUA = navigator.userAgent;
       const clean = buildCleanUA(realUA);
